@@ -1,6 +1,7 @@
 # Binance Pair Trading with OU Process
 
-A professional-grade pair trading strategy implementation designed for Binance Futures. This project utilizes rolling-window cointegration analysis and models the resulting spread using an Ornstein-Uhlenbeck (OU) process to determine optimal trading bands through statistical optimal stopping theory.
+A pair trading strategy implementation backtest using Binance data. This project utilizes rolling-window cointegration analysis and models the resulting spread using an Ornstein-Uhlenbeck (OU) process to determine optimal trading bands through statistical optimal stopping theory.
+Based on info from the book "ALGORITHMIC AND HIGH-FREQUENCY TRADING" by CARTEA and JAIMUNGAL and PENALVA, and FrenchQuant videos.
 
 ## Features
 
@@ -9,9 +10,8 @@ A professional-grade pair trading strategy implementation designed for Binance F
     - Rolling window cointegration (Hedge ratio and ADF stationarity tests).
     - OU process parameter estimation using Maximum Likelihood Estimation (MLE) and Method of Moments (MoM).
 - **Optimal Trading Bands**: Calculates entry and exit thresholds by solving the optimal stopping problem for a mean-reverting process.
-- **Robust Backtesting**: Full backtest engine accounting for transaction fees, slippage (via spread adjustment), and turnover.
+- **Robust Backtesting**: Full backtest engine accounting for transaction fees, and turnover.
 - **Visualization**: Generates detailed equity curves saved automatically to the `data/plots` directory.
-- **Orchestration**: A single command to run the entire pipeline from data download to backtest results.
 
 ## Project Structure
 
