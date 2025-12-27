@@ -1,7 +1,8 @@
 # Binance Pair Trading with OU Process
 
 A pair trading strategy implementation backtest using Binance data. This project utilizes rolling-window cointegration analysis and models the resulting spread using an Ornstein-Uhlenbeck (OU) process to determine optimal trading bands through statistical optimal stopping theory.
-Based on info from the book "ALGORITHMIC AND HIGH-FREQUENCY TRADING" by CARTEA and JAIMUNGAL and PENALVA, and FrenchQuant videos.
+
+Based on info from the book "ALGORITHMIC AND HIGH-FREQUENCY TRADING" by CARTEA and JAIMUNGAL and PENALVA, and FrenchQuant videos (https://youtu.be/_Sq6KoP7m1c?si=2N9ufvkx3fcU7zZe https://youtu.be/DeqpOFrH_Bg?si=YdeAJMz_xz04e2bd https://youtu.be/EYRk5nk6eDA?si=dBLKiuJM68GLDys0).
 
 ## Features
 
@@ -12,6 +13,12 @@ Based on info from the book "ALGORITHMIC AND HIGH-FREQUENCY TRADING" by CARTEA a
 - **Optimal Trading Bands**: Calculates entry and exit thresholds by solving the optimal stopping problem for a mean-reverting process.
 - **Robust Backtesting**: Full backtest engine accounting for transaction fees, and turnover.
 - **Visualization**: Generates detailed equity curves saved automatically to the `data/plots` directory.
+
+## Example Equity Curve
+
+<p align="center">
+  <img src="data/plots/equity_BNB-SOL_1d_w300_20200914-20251227.png" alt="Equity curve for BNB-SOL 1d window 300" width="700" />
+</p>
 
 ## Project Structure
 
