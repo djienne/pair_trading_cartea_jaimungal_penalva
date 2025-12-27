@@ -1,4 +1,4 @@
-# Binance Pair Trading with OU Process
+# Pair Trading with OU Process, CARTEA, JAIMUNGAL and PENALVA method
 
 A pair trading strategy implementation backtest using Binance data. This project utilizes rolling-window cointegration analysis and models the resulting spread using an Ornstein-Uhlenbeck (OU) process to determine optimal trading bands through statistical optimal stopping theory.
 
