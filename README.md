@@ -30,6 +30,8 @@ Based on info from the book "ALGORITHMIC AND HIGH-FREQUENCY TRADING" by CARTEA a
 - `run_all.py`: The main entry point to run the full pipeline.
 - `rank_coint_pairs.py`: Utility to find the most cointegrated pairs across the market.
 - `config.json`: Centralized configuration for parameters, pairs, and intervals.
+  - `transaction_cost` is used in `band_calc.py` to shift the optimal OU bands.
+  - `fee_rate` is used in `backtest.py` to apply turnover-based trading fees.
 
 ## Getting Started
 
