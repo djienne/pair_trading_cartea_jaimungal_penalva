@@ -7,40 +7,7 @@ import pandas as pd
 import statsmodels.api as sm
 from statsmodels.tsa.stattools import adfuller
 
-
-def load_config(path: str) -> Dict:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def pair_id(pair: Dict) -> str:
-    return f"{pair['y_symbol']}__{pair['x_symbol']}"
-
-
-def get_dirs(config: Dict) -> Tuple[str, str]:
-    data_dir = config.get("data_dir", "data")
-    feather_dir = config.get("feather_dir") or os.path.join(data_dir, "feather")
-    intermediate_dir = config.get("intermediate_dir") or os.path.join(
-        data_dir, "intermediate"
-    )
-    os.makedirs(intermediate_dir, exist_ok=True)
-    return feather_dir, intermediate_dir
-
-
-def get_symbol_path(symbol: str, interval: str, feather_dir: str) -> str:
-    return os.path.join(feather_dir, f"{symbol}_{interval}.feather")
-
-
-def load_symbol_data(symbol: str, interval: str, feather_dir: str) -> pd.DataFrame:
-    path = get_symbol_path(symbol, interval, feather_dir)
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Missing data for {symbol}: {path}")
-    df = pd.read_feather(path)
-    if "open_time_dt" in df.columns:
-        df["open_time_dt"] = pd.to_datetime(df["open_time_dt"])
-    else:
-        df["open_time_dt"] = pd.to_datetime(df["open_time"], unit="ms")
-    return df
+from utils import load_config, pair_id, get_dirs, load_symbol_data
 
 
 def prepare_pair_data(
@@ -85,7 +52,7 @@ def adf_check(series: pd.Series, alpha: float) -> Tuple[float, bool]:
 
 def calibrate_pair(pair: Dict, config: Dict) -> pd.DataFrame:
     interval = config.get("candle_interval", "1d")
-    feather_dir, intermediate_dir = get_dirs(config)
+    feather_dir, intermediate_dir, _ = get_dirs(config)
 
     data = prepare_pair_data(pair["y_symbol"], pair["x_symbol"], interval, feather_dir)
     if data.empty:

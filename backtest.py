@@ -4,48 +4,18 @@ from typing import Dict, Tuple
 
 import numpy as np
 import pandas as pd
+import matplotlib
+# Use Agg backend for safer plotting in scripts/parallel processes
+matplotlib.use("Agg") 
 import matplotlib.pyplot as plt
 
-
-def load_config(path: str) -> Dict:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def pair_id(pair: Dict) -> str:
-    return f"{pair['y_symbol']}__{pair['x_symbol']}"
-
-
-def get_dirs(config: Dict) -> Tuple[str, str]:
-    data_dir = config.get("data_dir", "data")
-    intermediate_dir = config.get("intermediate_dir") or os.path.join(
-        data_dir, "intermediate"
-    )
-    output_dir = config.get("output_dir") or os.path.join(data_dir, "output")
-    os.makedirs(output_dir, exist_ok=True)
-    return intermediate_dir, output_dir
-
-
-def load_coint_data(path: str) -> pd.DataFrame:
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Missing cointegration data: {path}")
-    df = pd.read_feather(path)
-    df["open_time_dt"] = pd.to_datetime(df["open_time_dt"])
-    return df.sort_values("open_time_dt").set_index("open_time_dt")
-
-
-def load_bands_data(path: str) -> pd.DataFrame:
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Missing band data: {path}")
-    df = pd.read_feather(path)
-    df["open_time_dt"] = pd.to_datetime(df["open_time_dt"])
-    return df.sort_values("open_time_dt").set_index("open_time_dt")
+from utils import load_config, pair_id, get_dirs, load_coint_data, load_bands_data
 
 
 def backtest_pair(pair: Dict, config: Dict) -> pd.DataFrame:
     interval = config.get("candle_interval", "1d")
     window = int(config.get("rolling_window_days", 30))
-    intermediate_dir, output_dir = get_dirs(config)
+    _, intermediate_dir, output_dir = get_dirs(config)
 
     coint_path = os.path.join(
         intermediate_dir,

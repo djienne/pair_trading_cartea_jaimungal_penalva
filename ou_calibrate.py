@@ -7,31 +7,7 @@ import pandas as pd
 import scipy.optimize as spopt
 import statsmodels.api as sm
 
-
-def load_config(path: str) -> Dict:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def pair_id(pair: Dict) -> str:
-    return f"{pair['y_symbol']}__{pair['x_symbol']}"
-
-
-def get_intermediate_dir(config: Dict) -> str:
-    data_dir = config.get("data_dir", "data")
-    intermediate_dir = config.get("intermediate_dir") or os.path.join(
-        data_dir, "intermediate"
-    )
-    os.makedirs(intermediate_dir, exist_ok=True)
-    return intermediate_dir
-
-
-def load_coint_data(path: str) -> pd.DataFrame:
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Missing cointegration data: {path}")
-    df = pd.read_feather(path)
-    df["open_time_dt"] = pd.to_datetime(df["open_time_dt"])
-    return df.sort_values("open_time_dt").set_index("open_time_dt")
+from utils import load_config, pair_id, get_dirs, load_coint_data, valid_ou_params
 
 
 def method_moments(x: np.ndarray, dt: float) -> Tuple[float, float, float]:
@@ -56,17 +32,6 @@ def neg_log_likelihood(params: np.ndarray, x: np.ndarray, dt: float) -> float:
     return -ll
 
 
-def valid_ou_params(params: np.ndarray, min_sigma: float, min_kappa: float) -> bool:
-    if params is None or len(params) < 3:
-        return False
-    theta, mu, sigma = params
-    if not np.isfinite(theta) or not np.isfinite(mu) or not np.isfinite(sigma):
-        return False
-    if theta <= min_kappa or sigma <= min_sigma:
-        return False
-    return True
-
-
 def ou_mle(
     x: np.ndarray, dt: float, min_sigma: float, min_kappa: float
 ) -> Tuple[np.ndarray, bool]:
@@ -89,7 +54,7 @@ def calibrate_pair(pair: Dict, config: Dict) -> pd.DataFrame:
     min_kappa = float(config.get("ou_min_kappa", 1e-4))
     min_kappa = max(min_kappa, 1e-12)
 
-    intermediate_dir = get_intermediate_dir(config)
+    _, intermediate_dir, _ = get_dirs(config)
     coint_path = os.path.join(
         intermediate_dir,
         f"coint_{pair_id(pair)}_{interval}_w{window}.feather",

@@ -7,50 +7,7 @@ import pandas as pd
 from scipy.integrate import quad
 from scipy.optimize import root
 
-
-def load_config(path: str) -> Dict:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def pair_id(pair: Dict) -> str:
-    return f"{pair['y_symbol']}__{pair['x_symbol']}"
-
-
-def get_intermediate_dir(config: Dict) -> str:
-    data_dir = config.get("data_dir", "data")
-    intermediate_dir = config.get("intermediate_dir") or os.path.join(
-        data_dir, "intermediate"
-    )
-    os.makedirs(intermediate_dir, exist_ok=True)
-    return intermediate_dir
-
-
-def load_coint_data(path: str) -> pd.DataFrame:
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Missing cointegration data: {path}")
-    df = pd.read_feather(path)
-    df["open_time_dt"] = pd.to_datetime(df["open_time_dt"])
-    return df.sort_values("open_time_dt").set_index("open_time_dt")
-
-
-def load_ou_data(path: str) -> pd.DataFrame:
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Missing OU calibration data: {path}")
-    df = pd.read_feather(path)
-    df["open_time_dt"] = pd.to_datetime(df["open_time_dt"])
-    return df.sort_values("open_time_dt").set_index("open_time_dt")
-
-
-def valid_ou_params(params: np.ndarray, min_sigma: float, min_kappa: float) -> bool:
-    if params is None or len(params) < 3:
-        return False
-    theta, mu, sigma = params
-    if not np.isfinite(theta) or not np.isfinite(mu) or not np.isfinite(sigma):
-        return False
-    if theta <= min_kappa or sigma <= min_sigma:
-        return False
-    return True
+from utils import load_config, pair_id, get_dirs, load_coint_data, load_ou_data, valid_ou_params
 
 
 class CointOpti:
@@ -90,22 +47,26 @@ class CointOpti:
         return self._safe_integrand(u_safe)
 
     def dint_plus(self, epsilon):
-        e_safe = max(float(epsilon), self.min_u)
+        e_val = np.asarray(epsilon).item() if isinstance(epsilon, np.ndarray) else epsilon
+        e_safe = max(float(e_val), self.min_u)
         return -1 * self._safe_integrand(e_safe)
 
     def dint_minus(self, epsilon):
-        e_safe = max(float(epsilon), self.min_u)
+        e_val = np.asarray(epsilon).item() if isinstance(epsilon, np.ndarray) else epsilon
+        e_safe = max(float(e_val), self.min_u)
         return 1 * self._safe_integrand(e_safe)
 
     def F_plus(self, epsilon):
-        e_safe = max(float(epsilon), self.min_u)
+        e_val = np.asarray(epsilon).item() if isinstance(epsilon, np.ndarray) else epsilon
+        e_safe = max(float(e_val), self.min_u)
         res, _ = quad(self.int_plus, e_safe, np.inf, args=(e_safe,))
         if not np.isfinite(res):
             raise ValueError("F_plus not finite")
         return res
 
     def F_minus(self, epsilon):
-        e_safe = max(float(epsilon), self.min_u)
+        e_val = np.asarray(epsilon).item() if isinstance(epsilon, np.ndarray) else epsilon
+        e_safe = max(float(e_val), self.min_u)
         if e_safe <= self.min_u:
             return 0.0
         res, _ = quad(self.int_minus, self.min_u, e_safe, args=(e_safe,))
@@ -117,16 +78,19 @@ class CointOpti:
         if analytic:
             return self.dint_plus(epsilon)
         h = 1e-4
-        return (self.F_plus(epsilon + h) - self.F_plus(epsilon - h)) / (2 * h)
+        e_val = np.asarray(epsilon).item() if isinstance(epsilon, np.ndarray) else epsilon
+        return (self.F_plus(e_val + h) - self.F_plus(e_val - h)) / (2 * h)
 
     def dF_minus(self, epsilon, analytic=True):
         if analytic:
             return self.dint_minus(epsilon)
         h = 1e-4
-        return (self.F_minus(epsilon + h) - self.F_minus(epsilon - h)) / (2 * h)
+        e_val = np.asarray(epsilon).item() if isinstance(epsilon, np.ndarray) else epsilon
+        return (self.F_minus(e_val + h) - self.F_minus(e_val - h)) / (2 * h)
 
     def H_plus(self, epsilon, analytic=True):
-        e_safe = max(float(epsilon), self.min_u)
+        e_val = np.asarray(epsilon).item() if isinstance(epsilon, np.ndarray) else epsilon
+        e_safe = max(float(e_val), self.min_u)
         return self.F_plus(e_safe) - (e_safe - self.c) * self.dF_plus(e_safe, analytic)
 
     def solve_optimal_long_short(self, epsilon_star, analytic=True):
@@ -197,7 +161,7 @@ def compute_bands(
 def calculate_bands(pair: Dict, config: Dict) -> pd.DataFrame:
     interval = config.get("candle_interval", "1d")
     window = int(config.get("rolling_window_days", 30))
-    intermediate_dir = get_intermediate_dir(config)
+    _, intermediate_dir, _ = get_dirs(config)
 
     coint_path = os.path.join(
         intermediate_dir,

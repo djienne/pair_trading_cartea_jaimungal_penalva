@@ -8,7 +8,8 @@ import numpy as np
 import pandas as pd
 import requests
 
-from coint_calibrate import calibrate_pair, get_dirs, get_symbol_path, load_config
+from coint_calibrate import calibrate_pair
+from utils import load_config, get_dirs, get_symbol_path
 
 
 def fetch_usdt_symbols(base_url: str) -> List[str]:
@@ -97,7 +98,7 @@ def rank_pairs(
 ) -> pd.DataFrame:
     interval = config.get("candle_interval", "1d")
     window = int(config.get("rolling_window_days", 30))
-    feather_dir, _ = get_dirs(config)
+    feather_dir, _, _ = get_dirs(config)
 
     available = filter_available_symbols(symbols, feather_dir, interval)
     missing = sorted(set(symbols) - set(available))

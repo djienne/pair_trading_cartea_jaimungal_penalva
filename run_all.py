@@ -4,11 +4,7 @@ import subprocess
 import sys
 from typing import Dict, List, Set
 
-
-def load_config(path: str) -> Dict:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
+from utils import load_config
 
 def get_required_symbols(config: Dict) -> Set[str]:
     symbols = set()
@@ -44,8 +40,7 @@ def run_script(script_name: str, args: List[str] = None) -> None:
     if result.returncode != 0:
         print(f"Error: {script_name} failed with exit code {result.returncode}")
         sys.exit(result.returncode)
-    print(f"--- Finished {script_name} ---\
-")
+    print(f"--- Finished {script_name} ---")
 
 
 def main():

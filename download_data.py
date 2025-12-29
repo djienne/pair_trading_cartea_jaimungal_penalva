@@ -7,6 +7,8 @@ from typing import Dict, Optional
 import pandas as pd
 import requests
 
+from utils import load_config
+
 COLUMNS = [
     "open_time",
     "open",
@@ -34,11 +36,6 @@ NUMERIC_COLUMNS = [
 ]
 
 INT_COLUMNS = ["open_time", "close_time", "num_trades"]
-
-
-def load_config(path: str) -> Dict:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
 
 
 def interval_to_millis(interval: str) -> int:
