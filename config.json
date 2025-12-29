@@ -1,9 +1,9 @@
 {
   "pairs": [
     {
-      "name": "BNB-SOL",
-      "y_symbol": "BNBUSDT",
-      "x_symbol": "SOLUSDT"
+      "name": "BTC-XRP",
+      "y_symbol": "BTCUSDT",
+      "x_symbol": "XRPUSDT"
     }
   ],
   "candle_interval": "1d",
@@ -22,7 +22,7 @@
   "discount_rate": 0.05,
   "ranking_threads": 4,
   "bands_std_mult": 3.0,
-  "flip_signals": true,
+  "flip_signals": false,
   "long_only": false,
   "max_klines_per_request": 1500,
   "log_adf_each_window": true,
