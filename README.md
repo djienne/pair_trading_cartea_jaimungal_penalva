@@ -1,4 +1,4 @@
-# Pair Trading CARTEA-JAIMUNGAL-PENALVA method
+# Pair Trading CARTEA-JAIMUNGAL-PENALVA method, and JANSEN method.
 
 A pair trading strategy implementation using Binance data daily candles (backtest only). The trading strategy utilizes rolling-window cointegration analysis and models the resulting spread using an Ornstein-Uhlenbeck (OU) process to determine optimal trading bands through statistical optimal stopping theory.
 
