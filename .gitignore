@@ -26,3 +26,7 @@ ENV/
 binance_doc.txt
 prompt.txt
 debug_band_calc.py
+Jansen_method/cache/
+*.aux
+*.log
+*.out
