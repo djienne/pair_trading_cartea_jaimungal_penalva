@@ -27,6 +27,7 @@ binance_doc.txt
 prompt.txt
 debug_band_calc.py
 Jansen_method/cache/
+Jansen_method/pair_trading_in_practice.pdf
 *.aux
 *.log
 *.out
