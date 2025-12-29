@@ -4,6 +4,8 @@ A pair trading strategy implementation using Binance data daily candles (backtes
 
 It is based on info from the book "ALGORITHMIC AND HIGH-FREQUENCY TRADING" by Cartea and Jaimungal and Penalva, and FrenchQuant videos ( https://youtu.be/_Sq6KoP7m1c?si=2N9ufvkx3fcU7zZe   https://youtu.be/DeqpOFrH_Bg?si=YdeAJMz_xz04e2bd   https://youtu.be/EYRk5nk6eDA?si=dBLKiuJM68GLDys0 ).
 
+Also includes a simpler model based on Jansen's book "Machine Learning for Algorithmic Trading".
+
 ## Features
 
 - **Automated Data Management**: Fetches historical klines directly from Binance Futures API.
