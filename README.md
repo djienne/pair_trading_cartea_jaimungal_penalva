@@ -29,6 +29,7 @@ It is based on info from the book "ALGORITHMIC AND HIGH-FREQUENCY TRADING" by Ca
 - `backtest.py`: Executes the strategy and generates performance reports.
 - `run_all.py`: The main entry point to run the full pipeline.
 - `rank_coint_pairs.py`: Utility to find the most cointegrated pairs across the market.
+- `Jansen_method/`: An alternative pairs trading implementation using Kalman Filters for dynamic hedge ratios and z-score thresholds. See [Jansen_method/README.md](Jansen_method/README.md) for detailed documentation.
 - `config.json`: Centralized configuration for parameters, pairs, and intervals.
   - `transaction_cost` is used in `band_calc.py` to shift the optimal OU bands.
   - `fee_rate` is used in `backtest.py` to apply turnover-based trading fees.
