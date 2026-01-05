@@ -12,7 +12,7 @@ sys.path.append(os.getcwd())
 
 # Import necessary functions
 try:
-    from coint_calibrate import calibrate_pair as coint_calibrate_pair
+    from bayesian_coint import calibrate_pair as coint_calibrate_pair
     from ou_calibrate import calibrate_pair as ou_calibrate_pair
     from band_calc import calculate_bands
     from backtest import backtest_pair, plot_equity
@@ -69,16 +69,26 @@ def process_single_pair(args: Tuple[str, str, Dict]) -> Optional[Dict]:
         # Use a copy of config to be absolutely safe in parallel
         local_config = dict(config)
         
-        with suppress_stdout():
-            coint_calibrate_pair(pair, local_config)
-            ou_calibrate_pair(pair, local_config)
-            calculate_bands(pair, local_config)
-            df = backtest_pair(pair, local_config)
+        # DEBUG: Print step-by-step progress
+        print(f"DEBUG: Starting {name}")
+        coint_calibrate_pair(pair, local_config, n_jobs_override=10, show_progress=False)
+        print(f"DEBUG: Cointegration done for {name}")
+        
+        ou_calibrate_pair(pair, local_config)
+        print(f"DEBUG: OU done for {name}")
+        
+        calculate_bands(pair, local_config)
+        print(f"DEBUG: Bands done for {name}")
+        
+        df = backtest_pair(pair, local_config)
+        print(f"DEBUG: Backtest done for {name}")
         
         if df is None or df.empty:
+            print(f"DEBUG: Dataframe empty for {name}")
             return None
 
         final_equity = float(df["equity"].iloc[-1])
+        print(f"Final equity for {name}: {final_equity:.2f} USD")
         ret_pct = (final_equity / start_equity - 1) * 100
         trades = int(df["turnover"].gt(0).sum()) if "turnover" in df.columns else 0
         
@@ -90,7 +100,10 @@ def process_single_pair(args: Tuple[str, str, Dict]) -> Optional[Dict]:
             "y_symbol": sym_y,
             "x_symbol": sym_x
         }
-    except Exception:
+    except Exception as e:
+        print(f"Error processing {name}: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def main():
@@ -123,27 +136,30 @@ def main():
     results = []
     max_workers = int(config.get("ranking_threads", 4))
     
-    print(f"\n--- Starting Bulk Backtest (Parallel, Workers={max_workers}) ---")
+    n_threads_bayes = 10
+    print(f"\n--- Starting Bulk Backtest (Sequential) ---")
+    print(f"Processing pairs one by one.")
+    print(f"Each pair's Bayesian calibration will use {n_threads_bayes} CPU threads (parallel windows).")
     
     best_equity_so_far = -float('inf')
     best_pair_so_far = None
 
-    with cf.ProcessPoolExecutor(max_workers=max_workers) as executor:
-        tasks = [(sym_y, sym_x, config) for sym_y, sym_x in pairs_list]
+    tasks = [(sym_y, sym_x, config) for sym_y, sym_x in pairs_list]
+    
+    count = 0
+    total = len(tasks)
+    for task in tasks:
+        res = process_single_pair(task)
+        count += 1
+        if res:
+            results.append(res)
+            if res["Final Equity"] > best_equity_so_far:
+                best_equity_so_far = res["Final Equity"]
+                best_pair_so_far = res["Pair"]
         
-        count = 0
-        total = len(tasks)
-        for res in executor.map(process_single_pair, tasks):
-            count += 1
-            if res:
-                results.append(res)
-                if res["Final Equity"] > best_equity_so_far:
-                    best_equity_so_far = res["Final Equity"]
-                    best_pair_so_far = res["Pair"]
-            
-            if count % 10 == 0 or count == total:
-                best_info = f" | Best so far: {best_pair_so_far} ({best_equity_so_far:.2f} USD)" if best_pair_so_far else ""
-                print(f"Progress: {count}/{total} (Valid: {len(results)}){best_info}")
+        if count % 10 == 0 or count == total:
+            best_info = f" | Best so far: {best_pair_so_far} ({best_equity_so_far:.2f} USD)" if best_pair_so_far else ""
+            print(f"Progress: {count}/{total} (Valid: {len(results)}){best_info}")
 
     # Final Ranking
     print("\n--- Final Ranking (Equity) ---")

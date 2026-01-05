@@ -1,5 +1,3 @@
-import json
-import os
 from typing import Dict, Tuple
 
 import numpy as np
@@ -7,7 +5,7 @@ import pandas as pd
 from scipy.integrate import quad
 from scipy.optimize import root
 
-from utils import load_config, pair_id, get_dirs, load_coint_data, load_ou_data, valid_ou_params
+from utils import load_config, pair_id, load_pair_data, save_pair_data, valid_ou_params
 
 
 class CointOpti:
@@ -159,21 +157,11 @@ def compute_bands(
 
 
 def calculate_bands(pair: Dict, config: Dict) -> pd.DataFrame:
-    interval = config.get("candle_interval", "1d")
     window = int(config.get("rolling_window_days", 30))
-    _, intermediate_dir, _ = get_dirs(config)
 
-    coint_path = os.path.join(
-        intermediate_dir,
-        f"coint_{pair_id(pair)}_{interval}_w{window}.feather",
-    )
-    ou_path = os.path.join(
-        intermediate_dir,
-        f"ou_{pair_id(pair)}_{interval}_w{window}.feather",
-    )
-
-    coint_df = load_coint_data(coint_path)
-    ou_df = load_ou_data(ou_path)
+    # Load data using consolidated utilities
+    coint_df = load_pair_data(pair, config, "coint")
+    ou_df = load_pair_data(pair, config, "ou")
 
     merged = coint_df.join(ou_df, how="left", rsuffix="_ou")
     n = len(merged)
@@ -234,6 +222,7 @@ def calculate_bands(pair: Dict, config: Dict) -> pd.DataFrame:
         med_upper = float("nan")
         med_mu = float("nan")
 
+    interval = config.get("candle_interval", "1d")
     print("Band calculation summary")
     print(f"Pair: {pair_id(pair)} | Interval: {interval} | Window: {window}")
     print(
@@ -248,12 +237,8 @@ def calculate_bands(pair: Dict, config: Dict) -> pd.DataFrame:
     if n_valid > 0 and fallback_count == n_valid:
         print("Warning: all valid bands fell back to mean/std.")
 
-    out_path = os.path.join(
-        intermediate_dir,
-        f"bands_{pair_id(pair)}_{interval}_w{window}.feather",
-    )
-    out.to_feather(out_path)
-    print(f"Saved bands to {out_path}")
+    # Save using consolidated utility
+    save_pair_data(out, pair, config, "bands")
     return out
 
 

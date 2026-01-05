@@ -1,5 +1,3 @@
-import json
-import os
 from typing import Dict, Tuple
 
 import numpy as np
@@ -7,7 +5,7 @@ import pandas as pd
 import scipy.optimize as spopt
 import statsmodels.api as sm
 
-from utils import load_config, pair_id, get_dirs, load_coint_data, valid_ou_params
+from utils import load_config, pair_id, load_pair_data, save_pair_data, valid_ou_params
 
 
 def method_moments(x: np.ndarray, dt: float) -> Tuple[float, float, float]:
@@ -46,7 +44,6 @@ def ou_mle(
 
 
 def calibrate_pair(pair: Dict, config: Dict) -> pd.DataFrame:
-    interval = config.get("candle_interval", "1d")
     window = int(config.get("rolling_window_days", 30))
     dt = float(config.get("ou_dt_days", 1.0))
     min_sigma = float(config.get("ou_min_u", 1e-6))
@@ -54,12 +51,8 @@ def calibrate_pair(pair: Dict, config: Dict) -> pd.DataFrame:
     min_kappa = float(config.get("ou_min_kappa", 1e-4))
     min_kappa = max(min_kappa, 1e-12)
 
-    _, intermediate_dir, _ = get_dirs(config)
-    coint_path = os.path.join(
-        intermediate_dir,
-        f"coint_{pair_id(pair)}_{interval}_w{window}.feather",
-    )
-    df = load_coint_data(coint_path)
+    # Load cointegration data using consolidated utility
+    df = load_pair_data(pair, config, "coint")
 
     n = len(df)
     kappa_arr = np.full(n, np.nan)
@@ -125,6 +118,7 @@ def calibrate_pair(pair: Dict, config: Dict) -> pd.DataFrame:
         med_mu = float("nan")
         med_sigma = float("nan")
 
+    interval = config.get("candle_interval", "1d")
     print("OU calibration summary")
     print(f"Pair: {pair_id(pair)} | Interval: {interval} | Window: {window}")
     print(
@@ -137,12 +131,8 @@ def calibrate_pair(pair: Dict, config: Dict) -> pd.DataFrame:
             f"sigma: {med_sigma:.6f}"
         )
 
-    out_path = os.path.join(
-        intermediate_dir,
-        f"ou_{pair_id(pair)}_{interval}_w{window}.feather",
-    )
-    out.to_feather(out_path)
-    print(f"Saved OU calibration to {out_path}")
+    # Save using consolidated utility
+    save_pair_data(out, pair, config, "ou")
     return out
 
 

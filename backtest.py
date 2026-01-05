@@ -1,102 +1,165 @@
-import json
 import os
-from typing import Dict, Tuple
+from typing import Dict
 
 import numpy as np
 import pandas as pd
 import matplotlib
-# Use Agg backend for safer plotting in scripts/parallel processes
-matplotlib.use("Agg") 
+matplotlib.use("Agg")  # Use Agg backend for safer plotting in scripts/parallel processes
 import matplotlib.pyplot as plt
 
-from utils import load_config, pair_id, get_dirs, load_coint_data, load_bands_data
+from utils import (
+    load_config,
+    pair_id,
+    get_dirs,
+    load_pair_data,
+    save_pair_data,
+)
 
 
 def backtest_pair(pair: Dict, config: Dict) -> pd.DataFrame:
-    interval = config.get("candle_interval", "1d")
-    window = int(config.get("rolling_window_days", 30))
-    _, intermediate_dir, output_dir = get_dirs(config)
+    # Load data using consolidated utilities
+    coint_df = load_pair_data(pair, config, "coint")
+    bands_df = load_pair_data(pair, config, "bands")
 
-    coint_path = os.path.join(
-        intermediate_dir,
-        f"coint_{pair_id(pair)}_{interval}_w{window}.feather",
-    )
-    bands_path = os.path.join(
-        intermediate_dir,
-        f"bands_{pair_id(pair)}_{interval}_w{window}.feather",
-    )
-
-    coint_df = load_coint_data(coint_path)
-    bands_df = load_bands_data(bands_path)
-
+    # Merge coint and bands data
     df = coint_df.join(bands_df, how="left", rsuffix="_bands")
     n = len(df)
     if n == 0:
         raise ValueError("No data available for backtest.")
 
-    pos_arr = np.zeros(n)
+    # Prepare arrays for fast iteration
+    y = df["y_close"].values
+    x = df["x_close"].values
+    # alpha = df["alpha"].values # Not explicitly needed for trading delta, but part of signal
+    beta = df["beta"].values
     epsilon = df["epsilon"].values
     lower = df["lower"].values
     upper = df["upper"].values
     mu = df["mu"].values
 
-    for i in range(1, n):
-        if not (
-            np.isfinite(epsilon[i])
-            and np.isfinite(lower[i])
-            and np.isfinite(upper[i])
-            and np.isfinite(mu[i])
-        ):
-            pos_arr[i] = 0.0
-            continue
-
-        prev_pos = pos_arr[i - 1]
-        new_pos = prev_pos
-
-        if prev_pos == 0:
-            if epsilon[i] < lower[i]:
-                new_pos = 1
-            elif epsilon[i] > upper[i]:
-                new_pos = -1
-        elif prev_pos == 1 and epsilon[i] >= mu[i]:
-            new_pos = 0
-        elif prev_pos == -1 and epsilon[i] <= mu[i]:
-            new_pos = 0
-
-        pos_arr[i] = new_pos
-
-    flip_signals = bool(config.get("flip_signals", False))
-    if flip_signals:
-        pos_arr = -pos_arr
-    df["position"] = pos_arr
-
-    returns_y = df["y_close"].pct_change()
-    returns_x = df["x_close"].pct_change()
-    beta_series = df["beta"].shift(1)
-
-    spread_return = (returns_y - beta_series * returns_x) / (1 + beta_series.abs())
-    strategy_return = df["position"].shift(1) * spread_return
-    strategy_return = strategy_return.fillna(0.0)
+    # Simulation State
+    pos = 0          # Current position: +1 (Long Portfolio), -1 (Short Portfolio), 0 (Flat)
+    m1 = 0.0         # Quantity of Asset 1 (Y)
+    m2 = 0.0         # Quantity of Asset 2 (X)
+    cash = float(config.get("start_equity", 1000)) # Start with all cash
+    
+    # We track Book Value (BV) = Cash + Market Value of Positions
+    book_value_arr = np.zeros(n)
+    pos_arr = np.zeros(n)
+    m1_arr = np.zeros(n)
+    m2_arr = np.zeros(n)
+    cash_arr = np.zeros(n)
+    turnover_arr = np.zeros(n)
 
     fee_rate = float(config.get("fee_rate", 0.001))
-    turnover = df["position"].diff().abs().fillna(0.0)
-    fee_cost = fee_rate * turnover
-    strategy_return = strategy_return - fee_cost
+    
+    # Initial state
+    book_value_arr[0] = cash
+    cash_arr[0] = cash
 
-    start_equity = float(config.get("start_equity", 1000))
-    equity = start_equity * (1 + strategy_return).cumprod()
+    for i in range(1, n):
+        # Skip if any required data is missing (NaN)
+        if not (np.isfinite(epsilon[i]) and np.isfinite(lower[i]) and np.isfinite(upper[i])):
+            # Carry forward state
+            book_value_arr[i] = cash + m1 * y[i] + m2 * x[i]
+            pos_arr[i] = pos
+            m1_arr[i] = m1
+            m2_arr[i] = m2
+            cash_arr[i] = cash
+            continue
 
-    df["strategy_return"] = strategy_return
-    df["equity"] = equity
-    df["turnover"] = turnover
-    df["fee_cost"] = fee_cost
+        z = epsilon[i]
+        curr_lower = lower[i]
+        curr_upper = upper[i]
+        curr_mu = mu[i]
+        curr_beta = beta[i]
+        
+        # Prices
+        py = y[i]
+        px = x[i]
 
-    out_path = os.path.join(
-        output_dir,
-        f"backtest_{pair_id(pair)}_{interval}_w{window}.feather",
-    )
-    df.reset_index().to_feather(out_path)
-    print(f"Saved backtest results to {out_path}")
+        prev_pos = pos
+        
+        # --- Trading Logic ---
+        # 1. Check Entries
+        if pos == 0:
+            if z <= curr_lower:
+                # Enter LONG Portfolio: Buy 1 unit of Y, Sell beta units of X
+                pos = 1
+                target_m1 = 1.0
+                target_m2 = -curr_beta
+            elif z >= curr_upper:
+                # Enter SHORT Portfolio: Sell 1 unit of Y, Buy beta units of X
+                pos = -1
+                target_m1 = -1.0
+                target_m2 = curr_beta
+            else:
+                # Stay Flat
+                target_m1 = 0.0
+                target_m2 = 0.0
+        
+        # 2. Check Exits
+        elif pos == 1: # Currently Long
+            if z >= curr_mu:
+                # Exit to Flat
+                pos = 0
+                target_m1 = 0.0
+                target_m2 = 0.0
+            else:
+                # Hold (Simple hold, no re-hedging logic in this basic version to match simple backtest speed)
+                # Note: In a full dynamic hedge, we might adjust m2 to match new beta. 
+                # For now, we hold the initial bundle until exit.
+                target_m1 = m1
+                target_m2 = m2
+
+        elif pos == -1: # Currently Short
+            if z <= curr_mu:
+                # Exit to Flat
+                pos = 0
+                target_m1 = 0.0
+                target_m2 = 0.0
+            else:
+                # Hold
+                target_m1 = m1
+                target_m2 = m2
+        
+        # --- Execution ---
+        # Calculate turnover and costs
+        dm1 = target_m1 - m1
+        dm2 = target_m2 - m2
+        
+        trade_value = abs(dm1 * py) + abs(dm2 * px)
+        cost = trade_value * fee_rate
+        
+        # Update cash: Cash decreases by cost of buying assets, increases by selling
+        # Cost of buying dm1 of Y is (dm1 * py)
+        cash -= (dm1 * py + dm2 * px)
+        cash -= cost
+        
+        m1 = target_m1
+        m2 = target_m2
+        
+        turnover_arr[i] = trade_value
+        pos_arr[i] = pos
+        m1_arr[i] = m1
+        m2_arr[i] = m2
+        cash_arr[i] = cash
+        
+        # Mark to Market
+        book_value_arr[i] = cash + m1 * py + m2 * px
+
+    df["position"] = pos_arr
+    df["m1"] = m1_arr
+    df["m2"] = m2_arr
+    df["cash"] = cash_arr
+    df["equity"] = book_value_arr
+    df["turnover"] = turnover_arr
+    
+    # Calculate returns for metrics
+    df["strategy_return"] = df["equity"].pct_change().fillna(0.0)
+
+    # Save using consolidated utility
+    save_pair_data(df, pair, config, "backtest")
     return df
 
 

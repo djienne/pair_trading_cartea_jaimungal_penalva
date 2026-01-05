@@ -1,5 +1,3 @@
-import json
-import os
 from typing import Dict, Tuple
 
 import numpy as np
@@ -7,26 +5,7 @@ import pandas as pd
 import statsmodels.api as sm
 from statsmodels.tsa.stattools import adfuller
 
-from utils import load_config, pair_id, get_dirs, load_symbol_data
-
-
-def prepare_pair_data(
-    y_symbol: str, x_symbol: str, interval: str, feather_dir: str
-) -> pd.DataFrame:
-    df_y = load_symbol_data(y_symbol, interval, feather_dir)
-    df_x = load_symbol_data(x_symbol, interval, feather_dir)
-
-    merged = pd.merge(
-        df_y[["open_time_dt", "close"]],
-        df_x[["open_time_dt", "close"]],
-        on="open_time_dt",
-        how="inner",
-        suffixes=("_y", "_x"),
-    )
-    merged = merged.sort_values("open_time_dt").set_index("open_time_dt")
-    merged.rename(columns={"close_y": "y_close", "close_x": "x_close"}, inplace=True)
-    merged = merged.dropna()
-    return merged
+from utils import load_config, pair_id, get_dirs, prepare_pair_data, save_pair_data
 
 
 def ols_hedge_ratio(y: pd.Series, x: pd.Series) -> Tuple[float, float, float]:
@@ -108,12 +87,7 @@ def calibrate_pair(pair: Dict, config: Dict) -> pd.DataFrame:
     results["adf_pvalue"] = adf_p_arr
     results["adf_pass"] = adf_pass_arr
 
-    out_path = os.path.join(
-        intermediate_dir,
-        f"coint_{pair_id(pair)}_{interval}_w{window}.feather",
-    )
-    results.reset_index().to_feather(out_path)
-    print(f"Saved cointegration results to {out_path}")
+    save_pair_data(results, pair, config, "coint")
     return results
 
 

@@ -5,4 +5,5 @@ scipy
 statsmodels
 requests
 pyarrow
-pykalman
+pymc
+tqdm

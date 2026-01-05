@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import requests
 
-from coint_calibrate import calibrate_pair
+from bayesian_coint import calibrate_pair
 from utils import load_config, get_dirs, get_symbol_path
 
 
