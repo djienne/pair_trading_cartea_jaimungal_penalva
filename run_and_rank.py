@@ -12,7 +12,8 @@ sys.path.append(os.getcwd())
 
 # Import necessary functions
 try:
-    from bayesian_coint import calibrate_pair as coint_calibrate_pair
+    from bayesian_coint import calibrate_pair as bayesian_calibrate_pair
+    from coint_calibrate import calibrate_pair as ols_calibrate_pair
     from ou_calibrate import calibrate_pair as ou_calibrate_pair
     from band_calc import calculate_bands
     from backtest import backtest_pair, plot_equity
@@ -68,10 +69,16 @@ def process_single_pair(args: Tuple[str, str, Dict]) -> Optional[Dict]:
     try:
         # Use a copy of config to be absolutely safe in parallel
         local_config = dict(config)
-        
+
         # DEBUG: Print step-by-step progress
         print(f"DEBUG: Starting {name}")
-        coint_calibrate_pair(pair, local_config, n_jobs_override=10, show_progress=False)
+
+        # Choose cointegration method based on config
+        coint_method = local_config.get("cointegration_method", "bayesian").lower()
+        if coint_method == "ols":
+            ols_calibrate_pair(pair, local_config)
+        else:
+            bayesian_calibrate_pair(pair, local_config, n_jobs_override=10, show_progress=False)
         print(f"DEBUG: Cointegration done for {name}")
         
         ou_calibrate_pair(pair, local_config)
@@ -136,10 +143,12 @@ def main():
     results = []
     max_workers = int(config.get("ranking_threads", 4))
     
-    n_threads_bayes = 10
+    coint_method = config.get("cointegration_method", "bayesian").lower()
     print(f"\n--- Starting Bulk Backtest (Sequential) ---")
+    print(f"Cointegration method: {coint_method.upper()}")
     print(f"Processing pairs one by one.")
-    print(f"Each pair's Bayesian calibration will use {n_threads_bayes} CPU threads (parallel windows).")
+    if coint_method == "bayesian":
+        print(f"Each pair's Bayesian calibration will use 10 CPU threads (parallel windows).")
     
     best_equity_so_far = -float('inf')
     best_pair_so_far = None

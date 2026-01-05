@@ -59,9 +59,14 @@ def main():
     else:
         print("All required symbol data found. Skipping download.")
         
-    # 2. Run bayesian_coint.py (Rolling Bayesian Hedge) instead of static/rolling OLS
-    # This generates the coint_...feather files with time-varying alpha/beta
-    run_script("bayesian_coint.py")
+    # 2. Run cointegration calibration based on config
+    coint_method = config.get("cointegration_method", "bayesian").lower()
+    if coint_method == "ols":
+        print("Using OLS cointegration method")
+        run_script("coint_calibrate.py")
+    else:
+        print("Using Bayesian cointegration method")
+        run_script("bayesian_coint.py")
     
     # 3. Run ou_calibrate.py
     run_script("ou_calibrate.py")

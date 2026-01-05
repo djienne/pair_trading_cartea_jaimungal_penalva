@@ -1,4 +1,6 @@
 {
+  "comment_cointegration_method": "cointegration_method: 'bayesian' (rolling Bayesian hedge) or 'ols' (rolling OLS regression)",
+  "cointegration_method": "ols",
   "pairs": [
     {
       "name": "BTC-XRP",
@@ -21,13 +23,15 @@
   "ou_min_kappa": 0.0001,
   "discount_rate": 0.05,
   "ranking_threads": 1,
-  "comment_bayesian": "bayesian_inference_method: 'advi' (fast, variational) or 'nuts' (slow, high-precision MCMC)",
-  "bayesian_inference_method": "advi",
-  "bayesian_advi_steps": 2000,
-  "bayesian_draws": 400,
-  "bayesian_tune": 400,
-  "bayesian_target_accept": 0.95,
-  "bayesian_use_ols_init": true,
+  "bayesian_config": {
+    "comment": "inference_method: 'advi' (fast, variational) or 'nuts' (slow, high-precision MCMC)",
+    "inference_method": "advi",
+    "advi_steps": 2000,
+    "draws": 400,
+    "tune": 400,
+    "target_accept": 0.95,
+    "use_ols_init": true
+  },
   "bands_std_mult": 3.0,
   "flip_signals": false,
   "long_only": false,

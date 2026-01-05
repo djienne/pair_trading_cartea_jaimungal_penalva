@@ -40,12 +40,13 @@ def compute_cache_key(pair: Dict, config: Dict, y_path: str, x_path: str) -> str
     - Config parameters affecting the model
     - Input data file states (mtime + size)
     """
+    bayes_cfg = config.get("bayesian_config", {})
     relevant_config = {
         "window": int(config.get("rolling_window_days", 30)),
-        "inference_method": config.get("bayesian_inference_method", "advi"),
-        "advi_steps": int(config.get("bayesian_advi_steps", 2000)),
-        "draws": int(config.get("bayesian_draws", 500)),
-        "tune": int(config.get("bayesian_tune", 500)),
+        "inference_method": bayes_cfg.get("inference_method", "advi"),
+        "advi_steps": int(bayes_cfg.get("advi_steps", 2000)),
+        "draws": int(bayes_cfg.get("draws", 500)),
+        "tune": int(bayes_cfg.get("tune", 500)),
         "candle_interval": config.get("candle_interval", "1d"),
         # We don't include ranking_threads because it affects speed, not the result
     }
@@ -102,14 +103,15 @@ def calibrate_pair(pair: Dict, config: Dict, n_jobs_override: Optional[int] = No
 
     # Configuration for Bayesian Rolling Window
     window = int(config.get("rolling_window_days", 30))
-    
-    # Bayesian settings from config
-    inference_method = config.get("bayesian_inference_method", "advi")
-    advi_steps = int(config.get("bayesian_advi_steps", 2000))
-    draws = int(config.get("bayesian_draws", 500))
-    tune = int(config.get("bayesian_tune", 500))
-    target_accept = float(config.get("bayesian_target_accept", 0.9))
-    use_ols_init = bool(config.get("bayesian_use_ols_init", True))
+
+    # Bayesian settings from nested config block
+    bayes_cfg = config.get("bayesian_config", {})
+    inference_method = bayes_cfg.get("inference_method", "advi")
+    advi_steps = int(bayes_cfg.get("advi_steps", 2000))
+    draws = int(bayes_cfg.get("draws", 500))
+    tune = int(bayes_cfg.get("tune", 500))
+    target_accept = float(bayes_cfg.get("target_accept", 0.9))
+    use_ols_init = bool(bayes_cfg.get("use_ols_init", True))
     
     # Determine n_jobs: use override if present, else default 10
     if n_jobs_override is not None:
