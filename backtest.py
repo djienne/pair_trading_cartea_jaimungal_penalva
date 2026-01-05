@@ -52,7 +52,8 @@ def backtest_pair(pair: Dict, config: Dict) -> pd.DataFrame:
     turnover_arr = np.zeros(n)
 
     fee_rate = float(config.get("fee_rate", 0.001))
-    
+    flip_signals = bool(config.get("flip_signals", False))
+
     # Initial state
     book_value_arr[0] = cash
     cash_arr[0] = cash
@@ -73,6 +74,10 @@ def backtest_pair(pair: Dict, config: Dict) -> pd.DataFrame:
         curr_upper = upper[i]
         curr_mu = mu[i]
         curr_beta = beta[i]
+
+        # Flip signals: swap upper/lower bands to reverse entry/exit logic
+        if flip_signals:
+            curr_lower, curr_upper = curr_upper, curr_lower
         
         # Prices
         py = y[i]
@@ -100,20 +105,24 @@ def backtest_pair(pair: Dict, config: Dict) -> pd.DataFrame:
         
         # 2. Check Exits
         elif pos == 1: # Currently Long
-            if z >= curr_mu:
+            # Exit condition depends on flip_signals
+            exit_long = (z <= curr_mu) if flip_signals else (z >= curr_mu)
+            if exit_long:
                 # Exit to Flat
                 pos = 0
                 target_m1 = 0.0
                 target_m2 = 0.0
             else:
                 # Hold (Simple hold, no re-hedging logic in this basic version to match simple backtest speed)
-                # Note: In a full dynamic hedge, we might adjust m2 to match new beta. 
+                # Note: In a full dynamic hedge, we might adjust m2 to match new beta.
                 # For now, we hold the initial bundle until exit.
                 target_m1 = m1
                 target_m2 = m2
 
         elif pos == -1: # Currently Short
-            if z <= curr_mu:
+            # Exit condition depends on flip_signals
+            exit_short = (z >= curr_mu) if flip_signals else (z <= curr_mu)
+            if exit_short:
                 # Exit to Flat
                 pos = 0
                 target_m1 = 0.0

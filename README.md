@@ -19,7 +19,7 @@ It is based on info from the book "ALGORITHMIC AND HIGH-FREQUENCY TRADING" by Ca
 ## Example Equity Curve
 
 <p align="center">
-  <img src="data/plots/equity_BNB-SOL_1d_w300_20200914-20251227.png" alt="Equity curve for BNB-SOL 1d window 300" width="700" />
+  <img src="data/plots/BEST_EQUITY_BTCUSDT-XRPUSDT_1d_w300_20200106-20260105.png" alt="Equity curve for BNB-SOL 1d window 300" width="700" />
 </p>
 
 ## Project Structure

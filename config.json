@@ -3,9 +3,9 @@
   "cointegration_method": "ols",
   "pairs": [
     {
-      "name": "BTC-XRP",
-      "y_symbol": "BTCUSDT",
-      "x_symbol": "XRPUSDT"
+      "name": "BNB-SOL",
+      "y_symbol": "BNBUSDT",
+      "x_symbol": "SOLUSDT"
     }
   ],
   "candle_interval": "1d",
